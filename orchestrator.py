@@ -1,18 +1,17 @@
 import json
 
 import numpy as np
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
 
 from rag_engine import ask as rag_ask
 from rag_engine import setup_pipeline
 
 
-# Loading services
 def load_services(json_path="services_db.json"):
     with open(json_path, "r", encoding="utf-8") as f:
         return json.load(f)
 
 def build_service_embeddings(services, embeddings_model):
-    """Embed each service's name once, ahead of time."""
     service_embeddings = {}
     for service_id, data in services.items():
         text = f"{data['name']} - {', '.join(data['documents'][:2])}"
@@ -22,23 +21,15 @@ def build_service_embeddings(services, embeddings_model):
 
 def setup_orchestrator():
     services = load_services()
-    vectorstore, llm = setup_pipeline()
 
-    # We need the embeddings model separately, not just the vectorstore
-    from langchain_google_genai import GoogleGenerativeAIEmbeddings
+    # Build the embeddings model ONCE here, reuse it everywhere
     embeddings_model = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001")
 
+    vectorstore, llm = setup_pipeline(embeddings_model)
     service_embeddings = build_service_embeddings(services, embeddings_model)
 
     return services, vectorstore, llm, service_embeddings, embeddings_model
 
-#services: a plain dictionary of json
-#vectorstore: a langchain vectorstore object
-#llm: a langchain llm object
-#service_embeddings: a dictionary of service_id to embedding vector
-#embeddings_model: a langchain embeddings model object
-
-# Measures how close two vectors are in meaning
 def cosine_similarity(vec1, vec2):
     a = np.array(vec1)
     b = np.array(vec2)

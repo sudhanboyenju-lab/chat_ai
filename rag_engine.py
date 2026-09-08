@@ -4,11 +4,11 @@ import os
 from dotenv import load_dotenv
 from langchain_community.vectorstores import Chroma
 from langchain_core.documents import Document
-from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
+from langchain_google_genai import ChatGoogleGenerativeAI
 
 load_dotenv()
 
-def setup_pipeline():
+def setup_pipeline(embeddings):
     with open("services_db.json", "r", encoding="utf-8") as f:
         services = json.load(f)
 
@@ -21,14 +21,10 @@ def setup_pipeline():
         Hours: {data['hours']}"""
         documents.append(Document(page_content=text, metadata={"source": service_id, "name": data["name"]}))
 
-    embeddings = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001")
-
     persist_dir = "./chroma_db_json"
     if os.path.exists(persist_dir):
-        # Database already exists - just load it, don't re-add documents
         vectorstore = Chroma(persist_directory=persist_dir, embedding_function=embeddings)
     else:
-        # First time - build it fresh
         vectorstore = Chroma.from_documents(documents, embeddings, persist_directory=persist_dir)
 
     llm = ChatGoogleGenerativeAI(model="gemini-3.6-flash", temperature=0.2)
