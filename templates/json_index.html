@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Dailo Service Lookup</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 700px; margin: 40px auto; padding: 20px; background: #f5f5f5; }
+        h1 { color: #1a3c6e; }
+        #search-box { padding: 12px; width: 100%; font-size: 16px; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; }
+        .service-card { background: white; padding: 15px; margin-top: 15px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .service-card h3 { margin-top: 0; color: #1a3c6e; }
+        .service-card ul { padding-left: 20px; }
+        .label { font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>Dailo Service Lookup</h1>
+    <p>Search by service name (e.g. "birth", "map", "tax")</p>
+    <input type="text" id="search-box" placeholder="Search services..." />
+    <div id="results"></div>
+
+    <script>
+        document.getElementById("search-box").addEventListener("input", async function() {
+            const query = this.value.trim();
+            const resultsDiv = document.getElementById("results");
+
+            if (!query) {
+                resultsDiv.innerHTML = "";
+                return;
+            }
+
+            const response = await fetch("/search", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ query: query })
+            });
+
+            const data = await response.json();
+            resultsDiv.innerHTML = "";
+
+            if (data.results.length === 0) {
+                resultsDiv.innerHTML = "<p>No matching service found.</p>";
+                return;
+            }
+
+            data.results.forEach(service => {
+                const card = document.createElement("div");
+                card.className = "service-card";
+                card.innerHTML = `
+                    <h3>${service.name}</h3>
+                    <p><span class="label">Documents required:</span></p>
+                    <ul>${service.documents.map(doc => `<li>${doc}</li>`).join("")}</ul>
+                    <p><span class="label">Fee:</span> ${service.fee}</p>
+                    <p><span class="label">Office:</span> ${service.office}</p>
+                    <p><span class="label">Hours:</span> ${service.hours}</p>
+                `;
+                resultsDiv.appendChild(card);
+            });
+        });
+    </script>
+</body>
+</html>
