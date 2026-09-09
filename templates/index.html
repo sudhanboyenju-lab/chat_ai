@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>AI</title>
+    <title>Ward AI</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -13,14 +13,42 @@
         }
         h1 {
             color: #1a3c6e;
+            margin-bottom: 5px;
         }
-        #chat-box {
+        h3 {
+            color: #1a3c6e;
+            margin-top: 0;
+        }
+        .subtitle {
+            color: #555;
+            margin-top: 0;
+        }
+        #mode-toggle {
+            margin: 15px 0 20px 0;
+        }
+        #mode-toggle button {
+            background: #eee;
+            color: #1a3c6e;
+            border: 1px solid #ccc;
+            font-size: 14px;
+            padding: 8px 16px;
+        }
+        #mode-toggle button:hover {
+            background: #ddd;
+        }
+        .panel {
             background: white;
             border-radius: 10px;
             padding: 20px;
-            min-height: 300px;
-            margin-bottom: 15px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 15px;
+        }
+        .hidden {
+            display: none;
+        }
+        #chat-box {
+            min-height: 250px;
+            margin-bottom: 15px;
         }
         .message {
             margin-bottom: 15px;
@@ -34,7 +62,11 @@
         .ai-message {
             background: #f1f8e9;
         }
-
+        .sources {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
         #input-area {
             display: flex;
             gap: 10px;
@@ -58,20 +90,86 @@
         button:hover {
             background: #14304f;
         }
+        #batch-input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            font-size: 14px;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+            resize: vertical;
+        }
+        #batch-results {
+            margin-top: 15px;
+        }
+        .timing-note {
+            font-size: 13px;
+            color: #1a3c6e;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .hint {
+            font-size: 13px;
+            color: #666;
+            margin-top: 0;
+        }
     </style>
 </head>
 <body>
-    <h1>AI</h1>
-    <p>Ask about birth registration or map approval services.</p>
+    <h1>Citizen AI</h1>
+    <p class="subtitle">Ask about birth registration, map approval, tax payment, and other municipal services.</p>
 
-    <div id="chat-box"></div>
+    <div id="mode-toggle">
+        <button id="toggle-btn" onclick="toggleMode()">Ask multiple questions instead</button>
+    </div>
 
-    <div id="input-area">
-        <input type="text" id="question-input" placeholder="Type your question..." />
-        <button onclick="sendQuestion()">Ask</button>
+    <!-- SINGLE QUESTION MODE -->
+    <div id="single-panel" class="panel">
+        <div id="chat-box"></div>
+
+        <div id="input-area">
+            <input type="text" id="question-input" placeholder="Type your question..." />
+            <button onclick="sendQuestion()">Ask</button>
+        </div>
+    </div>
+
+    <!-- MULTI QUESTION MODE (hidden by default) -->
+    <div id="batch-panel" class="panel hidden">
+        <h3>Ask multiple questions at once</h3>
+        <p class="hint">Type one question per line. All questions are processed concurrently.</p>
+        <textarea id="batch-input" rows="5" placeholder="Question 1?
+            Question 2?
+            Question 3?">
+        </textarea>
+        <br>
+        <button onclick="sendBatchQuestions()" style="margin-top: 10px;">Ask All</button>
+
+        <div id="batch-results"></div>
     </div>
 
     <script>
+        let currentMode = "single";
+
+        function toggleMode() {
+            const singlePanel = document.getElementById("single-panel");
+            const batchPanel = document.getElementById("batch-panel");
+            const toggleBtn = document.getElementById("toggle-btn");
+
+            if (currentMode === "single") {
+                currentMode = "batch";
+                singlePanel.classList.add("hidden");
+                batchPanel.classList.remove("hidden");
+                toggleBtn.textContent = "Ask a single question instead";
+            } else {
+                currentMode = "single";
+                batchPanel.classList.add("hidden");
+                singlePanel.classList.remove("hidden");
+                toggleBtn.textContent = "Ask multiple questions instead";
+            }
+        }
+
+        // ---------- Single question chat ----------
         async function sendQuestion() {
             const input = document.getElementById("question-input");
             const question = input.value.trim();
@@ -95,14 +193,26 @@
             const data = await response.json();
             loadingDiv.remove();
 
-            addMessage(data.answer, "ai-message");
+            let sourcesText = "";
+            if (data.sources && data.sources.length > 0) {
+                sourcesText = "Sources: " + data.sources.join(", ");
+            }
+
+            addMessage(data.answer, "ai-message", sourcesText);
         }
 
-        function addMessage(text, className) {
+        function addMessage(text, className, sources = "") {
             const chatBox = document.getElementById("chat-box");
             const div = document.createElement("div");
             div.className = "message " + className;
             div.textContent = text;
+
+            if (sources) {
+                const sourceDiv = document.createElement("div");
+                sourceDiv.className = "sources";
+                sourceDiv.textContent = sources;
+                div.appendChild(sourceDiv);
+            }
 
             chatBox.appendChild(div);
             chatBox.scrollTop = chatBox.scrollHeight;
@@ -111,6 +221,46 @@
         document.getElementById("question-input").addEventListener("keypress", function(e) {
             if (e.key === "Enter") sendQuestion();
         });
+
+        // ---------- Batch questions (looping + concurrent execution) ----------
+        async function sendBatchQuestions() {
+            const textarea = document.getElementById("batch-input");
+            const questions = textarea.value
+                .split("\n")
+                .map(q => q.trim())
+                .filter(q => q.length > 0);
+
+            if (questions.length === 0) return;
+
+            const resultsDiv = document.getElementById("batch-results");
+            resultsDiv.innerHTML = `<p>Processing ${questions.length} questions concurrently...</p>`;
+
+            const startTime = performance.now();
+
+            const response = await fetch("/ask-batch", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ questions: questions })
+            });
+
+            const data = await response.json();
+            const elapsed = ((performance.now() - startTime) / 1000).toFixed(2);
+
+            resultsDiv.innerHTML = `<p class="timing-note">Completed ${data.results.length} questions in ${elapsed}s</p>`;
+
+            data.results.forEach(item => {
+                const card = document.createElement("div");
+                card.className = "message ai-message";
+
+                let sourcesText = "";
+                if (item.sources && item.sources.length > 0) {
+                    sourcesText = `<div class="sources">Sources: ${item.sources.join(", ")}</div>`;
+                }
+
+                card.innerHTML = `<strong>Q: ${item.question}</strong><br>${item.answer}${sourcesText}`;
+                resultsDiv.appendChild(card);
+            });
+        }
     </script>
 </body>
 </html>
