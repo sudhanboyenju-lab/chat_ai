@@ -12,7 +12,7 @@ services, vectorstore, llm, service_embeddings, embeddings_model = setup_orchest
 def home():
     return render_template("index.html")
 
-def answer_one(question, services, vectorstore, llm, service_embeddings, embeddings_model):
+def answer_one(question):
     answer, sources = orchestrate(question, services, vectorstore, llm, service_embeddings, embeddings_model)
     return {"question": question, "answer": answer, "sources": sources}
 
@@ -20,8 +20,8 @@ def answer_one(question, services, vectorstore, llm, service_embeddings, embeddi
 def ask_endpoint():
     data = request.json
     question = data.get("question", "")
-    result = answer_one(question, services, vectorstore, llm, service_embeddings, embeddings_model)
-    return jsonify({"answer": result["answer"], "sources": result["sources"]})
+    result = answer_one(question)
+    return jsonify({"answer": result["answer"]})
 
 @app.route("/ask-batch", methods=["POST"])
 def ask_batch_endpoint():
@@ -35,8 +35,8 @@ def ask_batch_endpoint():
     results = []
     with ThreadPoolExecutor(max_workers=5) as executor:
         futures = [
-            executor.submit(answer_one, q, services, vectorstore, llm, service_embeddings, embeddings_model)
-            for q in questions
+            executor.submit(answer_one, question)
+            for question in questions
         ]
         for future in as_completed(futures):
             results.append(future.result())
