@@ -38,19 +38,36 @@ def get_text(response):
         if isinstance(block, dict) and block.get("type") == "text"
     )
 
-def ask(vectorstore, llm, question, threshold=0.8):
+def is_nepali(text):
+    return any('\u0900' <= char <= '\u097F' for char in text)
+
+def ask(vectorstore, llm, question, history=None, threshold=0.8):
+    if history is None:
+        history = []
+
     results_with_scores = vectorstore.similarity_search_with_score(question, k=3)
     relevant_results = [(doc, score) for doc, score in results_with_scores if score < threshold]
 
     if not relevant_results:
-        return "यो सेवाको बारेमा हामीसँग जानकारी छैन। कृपया आफ्नो स्थानीय वडा कार्यालयमा सम्पर्क गर्नुहोस्।", []
+        if is_nepali(question):
+            return "यो सेवाको बारेमा हामीसँग जानकारी छैन। कृपया आफ्नो स्थानीय वडा कार्यालयमा सम्पर्क गर्नुहोस्।", []
+        else:
+            return "We don't have information about this service. Please contact your local ward office.", []
 
     results = [doc for doc, score in relevant_results]
     retrieved_text = "\n\n".join([doc.page_content for doc in results])
 
-    prompt = f"""Answer the question using ONLY the information below. If the answer isn't in the information, say you don't know.
+    history_text = ""
+    if history:
+        history_text = "Previous conversation:\n"
+        for h in history[-3:]:
+            history_text += f"Citizen: {h['question']}\nAssistant: {h['answer']}\n\n"
 
-    Information:
+    prompt = f"""Answer the question using ONLY the information below. Answer in the SAME language as the question (Nepali or English). 
+    Pay close attention to negation words like "not", "don't", "except" - if the question asks what is NOT required, and the information only lists what IS required, clearly say you only have information on what IS required. 
+    Consider the previous conversation for context. If the answer isn't in the information, say you don't know.
+
+    {history_text}Information:
     {retrieved_text}
 
     Question: {question}
