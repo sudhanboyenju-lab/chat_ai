@@ -1,5 +1,5 @@
 # Text (string)
-name = "Dailo"
+name = "ChatAI"
 print(name)
 
 # Number (integer)

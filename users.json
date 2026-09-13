@@ -1,0 +1,6 @@
+{
+  "sudan": {
+    "password_hash": "scrypt:32768:8:1$YoigOAmztdme8cbn$e0836f7c332e7e88c282cc7787547097b1720e1cca66471a8b09f9ccebfe46f3c99a10d52a40f45e0d6ec1823130ee8abd3e978c5d518aec64b58da07a1e7e49",
+    "role": "citizen"
+  }
+}
