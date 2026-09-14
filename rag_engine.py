@@ -1,4 +1,3 @@
-import json
 import os
 
 from dotenv import load_dotenv
@@ -6,11 +5,12 @@ from langchain_community.vectorstores import Chroma
 from langchain_core.documents import Document
 from langchain_google_genai import ChatGoogleGenerativeAI
 
+from db import load_services_from_db
+
 load_dotenv()
 
 def setup_pipeline(embeddings):
-    with open("services_db.json", "r", encoding="utf-8") as f:
-        services = json.load(f)
+    services = load_services_from_db()
 
     documents = []
     for service_id, data in services.items():

@@ -1,15 +1,14 @@
-import json
 
 import numpy as np
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 
+from db import load_services_from_db
 from rag_engine import ask as rag_ask
 from rag_engine import setup_pipeline
 
 
-def load_services(json_path="services_db.json"):
-    with open(json_path, "r", encoding="utf-8") as f:
-        return json.load(f)
+def load_services():
+    return load_services_from_db()
 
 def build_service_embeddings(services, embeddings_model):
     service_embeddings = {}
