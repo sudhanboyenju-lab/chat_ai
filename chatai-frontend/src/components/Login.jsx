@@ -7,8 +7,8 @@ export default function Login({ onSwitchToRegister }) {
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
-    const { setIsLoggedIn } = useAuth();
-
+    const { setIsLoggedIn, setRole } = useAuth();
+    
     async function handleLogin() {
         if (!username.trim() || !password) return;
         setLoading(true);
@@ -17,6 +17,7 @@ export default function Login({ onSwitchToRegister }) {
         try {
             const data = await api.login(username.trim(), password);
             if (data.success) {
+                setRole(data.role);
                 setIsLoggedIn(true);
             } else {
                 setError(data.message || "Login failed");

@@ -5,6 +5,7 @@ from flask import Flask, jsonify, request, session
 from flask_cors import CORS
 
 from auth import register_user, verify_user
+from db import add_service, delete_service, load_services_from_db, update_service
 from orchestrator import orchestrate, route_question, setup_orchestrator
 
 app = Flask(__name__)
@@ -61,7 +62,7 @@ def login():
         session["username"] = username
         session["role"] = role
         session["history"] = []
-        return jsonify({"success": True})
+        return jsonify({"success": True, "role": role})
     return jsonify({"success": False, "message": "Invalid username or password"})
 
 
@@ -128,6 +129,52 @@ def ask_batch_endpoint():
             results.append(future.result())
 
     return jsonify({"results": results})
+
+def admin_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if "username" not in session:
+            return jsonify({"error": "Not logged in"}), 401
+        if session.get("role") != "admin":
+            return jsonify({"error": "Admin access required"}), 403
+        return f(*args, **kwargs)
+    return decorated
+
+
+@app.route("/admin/services", methods=["GET"])
+@admin_required
+def admin_list_services():
+    current_services = load_services_from_db()
+    return jsonify({"services": current_services})
+
+
+@app.route("/admin/services", methods=["POST"])
+@admin_required
+def admin_add_service():
+    data = request.json
+    add_service(
+        data["service_id"], data["name"], data["fee"],
+        data["office"], data["hours"], data["documents"]
+    )
+    return jsonify({"success": True, "message": "Service added"})
+
+
+@app.route("/admin/services/<service_id>", methods=["PUT"])
+@admin_required
+def admin_update_service(service_id):
+    data = request.json
+    update_service(
+        service_id, data["name"], data["fee"],
+        data["office"], data["hours"], data["documents"]
+    )
+    return jsonify({"success": True, "message": "Service updated"})
+
+
+@app.route("/admin/services/<service_id>", methods=["DELETE"])
+@admin_required
+def admin_delete_service(service_id):
+    delete_service(service_id)
+    return jsonify({"success": True, "message": "Service deleted"})
 
 
 if __name__ == "__main__":

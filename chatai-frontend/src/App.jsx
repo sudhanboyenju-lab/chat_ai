@@ -5,13 +5,15 @@ import Register from "./components/Register";
 import ChatWindow from "./components/ChatWindow";
 import BatchAsk from "./components/BatchAsk";
 import ModeToggle from "./components/ModeToggle";
+import AdminPanel from "./components/AdminPanel";
 import { api } from "./api/client";
 import "./App.css";
 
 function AppContent() {
-    const { isLoggedIn, setIsLoggedIn } = useAuth();
+    const { isLoggedIn, setIsLoggedIn, role } = useAuth();
     const [authView, setAuthView] = useState("login");
     const [mode, setMode] = useState("single");
+    const [view, setView] = useState("chat"); // "chat" | "admin"
 
     async function handleLogout() {
         await api.logout();
@@ -41,10 +43,25 @@ function AppContent() {
             </button>
             <h1>Citizen AI</h1>
             <p className="subtitle">
-                Ask about birth registration, map apaaproval, tax payment, and other municipal services.
+                Ask about birth registration, map approval, tax payment, and other municipal services.
             </p>
-            <ModeToggle mode={mode} setMode={setMode} />
-            {mode === "single" ? <ChatWindow /> : <BatchAsk />}
+    
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                {view === "chat" && <ModeToggle mode={mode} setMode={setMode} />}
+    
+                {role === "admin" && (
+                    <button
+                        className="mode-toggle-btn"
+                        onClick={() => setView(view === "chat" ? "admin" : "chat")}
+                    >
+                        {view === "chat" ? "⚙ Admin Panel" : "← Back to Chat"}
+                    </button>
+                )}
+            </div>
+    
+            {view === "admin"
+                ? <AdminPanel />
+                : (mode === "single" ? <ChatWindow /> : <BatchAsk />)}
         </div>
     );
 }

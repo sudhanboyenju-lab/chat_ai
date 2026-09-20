@@ -1,5 +1,6 @@
-import mysql.connector
 from typing import Any
+
+import mysql.connector
 
 
 def get_connection():
@@ -59,6 +60,57 @@ def create_user(username, password_hash, role="citizen"):
         "INSERT INTO users (username, password_hash, role) VALUES (%s, %s, %s)",
         (username, password_hash, role)
     )
+    conn.commit()
+    cursor.close()
+    conn.close()
+    
+def add_service(service_id, name, fee, office, hours, documents):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        "INSERT INTO services (service_id, name, fee, office, hours) VALUES (%s, %s, %s, %s, %s)",
+        (service_id, name, fee, office, hours)
+    )
+
+    for doc in documents:
+        cursor.execute(
+            "INSERT INTO service_documents (service_id, document_name) VALUES (%s, %s)",
+            (service_id, doc)
+        )
+
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+
+def update_service(service_id, name, fee, office, hours, documents):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        "UPDATE services SET name=%s, fee=%s, office=%s, hours=%s WHERE service_id=%s",
+        (name, fee, office, hours, service_id)
+    )
+
+    # Simplest approach: delete old documents, insert the new full list
+    cursor.execute("DELETE FROM service_documents WHERE service_id=%s", (service_id,))
+    for doc in documents:
+        cursor.execute(
+            "INSERT INTO service_documents (service_id, document_name) VALUES (%s, %s)",
+            (service_id, doc)
+        )
+
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+
+def delete_service(service_id):
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM service_documents WHERE service_id=%s", (service_id,))
+    cursor.execute("DELETE FROM services WHERE service_id=%s", (service_id,))
     conn.commit()
     cursor.close()
     conn.close()

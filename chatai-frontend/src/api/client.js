@@ -26,4 +26,15 @@ export const api = {
 
     askBatch: (questions) =>
         request("/ask-batch", { method: "POST", body: JSON.stringify({ questions }) }),
+
+    adminListServices: () => request("/admin/services", { method: "GET" }),
+
+    adminAddService: (service) =>
+        request("/admin/services", { method: "POST", body: JSON.stringify(service) }),
+
+    adminUpdateService: (serviceId, service) =>
+        request(`/admin/services/${serviceId}`, { method: "PUT", body: JSON.stringify(service) }),
+
+    adminDeleteService: (serviceId) =>
+        request(`/admin/services/${serviceId}`, { method: "DELETE" }),
 };
