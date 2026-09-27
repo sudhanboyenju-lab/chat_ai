@@ -2,6 +2,9 @@
 env/
 venv/
 __pycache__/
-chroma_db_json/
-node_modules/
 *.pyc
+chroma_db_json/
+chroma_localgov/
+chroma_restro/
+node_modules/
+.DS_Store
