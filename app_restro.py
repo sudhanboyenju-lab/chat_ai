@@ -12,7 +12,6 @@ from restro_config import (  # <-- only line that differs from LocalGov's app.py
 )
 
 app = Flask(__name__)
-# CORS(app, supports_credentials=True, origins=["http://192.168.1.6:5174"])
 CORS(app, supports_credentials=True, origins=["http://localhost:5174"])
 
 app.secret_key = "dev-secret-key-change-this-later"  # TODO: move to .env before deploying
@@ -20,7 +19,7 @@ app.secret_key = "dev-secret-key-change-this-later"  # TODO: move to .env before
 app.config.update(
     SESSION_COOKIE_SAMESITE="Lax",
     SESSION_COOKIE_SECURE=False,
-    SESSION_COOKIE_NAME="restro_session"
+    SESSION_COOKIE_NAME="restro_session",
 )
 
 

@@ -3,15 +3,14 @@ from typing import Any
 import mysql.connector
 
 
-def get_connection():
+def get_connection(database="chatai"):
     return mysql.connector.connect(
         host="localhost",
         port=3306,
         user="root",
         password="",
-        database="chatai"
+        database=database
     )
-
 
 def load_services_from_db():
     conn = get_connection()
