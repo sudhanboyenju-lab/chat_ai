@@ -3,21 +3,13 @@ from typing import Any
 import mysql.connector
 
 
-<<<<<<< HEAD
-def get_connection(database="chatai"):
-=======
 def get_connection():
->>>>>>> 3c38c0001fdb7593b786e29037d23d635bdb7bab
     return mysql.connector.connect(
         host="localhost",
         port=3306,
         user="root",
         password="",
-<<<<<<< HEAD
-        database=database
-=======
         database="chatai"
->>>>>>> 3c38c0001fdb7593b786e29037d23d635bdb7bab
     )
 
 
@@ -71,12 +63,7 @@ def create_user(username, password_hash, role="citizen"):
     conn.commit()
     cursor.close()
     conn.close()
-<<<<<<< HEAD
-
-
-=======
     
->>>>>>> 3c38c0001fdb7593b786e29037d23d635bdb7bab
 def add_service(service_id, name, fee, office, hours, documents):
     conn = get_connection()
     cursor = conn.cursor()
