@@ -2,7 +2,10 @@
 // If you open React at http://localhost:5173, this must say "localhost", not "127.0.0.1"
 // (browsers treat those as different origins for cookies, even on the same machine).
 const BASE_URL = "http://localhost:5002";
+<<<<<<< HEAD
 // const BASE_URL = "http://192.168.1.6:5002";
+=======
+>>>>>>> 3c38c0001fdb7593b786e29037d23d635bdb7bab
 
 async function request(path, options = {}) {
     const res = await fetch(BASE_URL + path, {
