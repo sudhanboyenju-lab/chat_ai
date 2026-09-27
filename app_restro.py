@@ -6,26 +6,24 @@ from flask_cors import CORS
 
 from ai_engine.orchestrator import route_question
 from auth import register_user, verify_user
-from localgov_config import (  # <-- was: setup_orchestrator() from orchestrator.py
+from restro_config import (  # <-- only line that differs from LocalGov's app.py
     config,
     engine,
 )
 
 app = Flask(__name__)
-# CORS(app, supports_credentials=True, origins=["http://192.168.1.6:5173"])
-CORS(app, supports_credentials=True, origins=["http://localhost:5173"])
-
+# CORS(app, supports_credentials=True, origins=["http://192.168.1.6:5174"])
+CORS(app, supports_credentials=True, origins=["http://localhost:5174"])
 
 app.secret_key = "dev-secret-key-change-this-later"  # TODO: move to .env before deploying
 
 app.config.update(
     SESSION_COOKIE_SAMESITE="Lax",
     SESSION_COOKIE_SECURE=False,
-    SESSION_COOKIE_NAME="localgov_session"
+    SESSION_COOKIE_NAME="restro_session"
 )
 
 
-# --- Auth guards ---
 def login_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
@@ -46,13 +44,11 @@ def admin_required(f):
     return decorated
 
 
-# --- Health check ---
 @app.route("/")
 def home():
     return jsonify({"status": "API running"})
 
 
-# --- Auth routes (unchanged) ---
 @app.route("/register", methods=["POST"])
 def register():
     data = request.json
@@ -87,12 +83,7 @@ def logout():
     return jsonify({"success": True})
 
 
-# --- Shared per-question logic, used by both /ask and /ask-batch ---
 def answer_one(question, history=None):
-    # engine.entities / engine.entity_embeddings are the same cached data
-    # the Engine used internally - we just re-run the same routing call
-    # here to surface `route` and `service_id` in the API response, same
-    # as your old app.py did.
     route, entity_id = route_question(question, engine.entities, engine.entity_embeddings, engine.config)
     answer, sources, action = engine.ask(question, history=history)
     return {
@@ -101,11 +92,10 @@ def answer_one(question, history=None):
         "sources": sources,
         "action": action,
         "route": route,
-        "service_id": entity_id,
+        "item_id": entity_id,   # was "service_id" in LocalGov
     }
 
 
-# --- Single question ---
 @app.route("/ask", methods=["POST"])
 @login_required
 def ask_endpoint():
@@ -126,7 +116,6 @@ def ask_endpoint():
     })
 
 
-# --- Multiple questions, processed concurrently ---
 @app.route("/ask-batch", methods=["POST"])
 @login_required
 def ask_batch_endpoint():
@@ -145,53 +134,52 @@ def ask_batch_endpoint():
     return jsonify({"results": results})
 
 
-# --- Admin CRUD - now generic via config.db_connector instead of db.py's
-#     service-specific add_service/update_service/delete_service/load_services_from_db ---
-@app.route("/admin/services", methods=["GET"])
+# --- Admin CRUD for menu items ---
+@app.route("/admin/menu-items", methods=["GET"])
 @admin_required
-def admin_list_services():
+def admin_list_menu_items():
     current_entities = config.db_connector.get_all_entities(config)
-    return jsonify({"services": current_entities})
+    return jsonify({"menu_items": current_entities})
 
 
-@app.route("/admin/services", methods=["POST"])
+@app.route("/admin/menu-items", methods=["POST"])
 @admin_required
-def admin_add_service():
+def admin_add_menu_item():
     data = request.json
-    entity_id = data["service_id"]
+    entity_id = data["item_id"]
     fields = {
-        config.entity_name_field: data["name"],
-        "fee": data["fee"],
-        "office": data["office"],
-        "hours": data["hours"],
+        config.entity_name_field: data["dish_name"],
+        "price": data["price"],
+        "category": data["category"],
+        "spice_level": data["spice_level"],
     }
-    config.db_connector.add_entity(config, entity_id, fields, data.get("documents", []))
+    config.db_connector.add_entity(config, entity_id, fields, data.get("ingredients", []))
     engine.refresh()
-    return jsonify({"success": True, "message": "Service added"})
+    return jsonify({"success": True, "message": "Menu item added"})
 
 
-@app.route("/admin/services/<service_id>", methods=["PUT"])
+@app.route("/admin/menu-items/<item_id>", methods=["PUT"])
 @admin_required
-def admin_update_service(service_id):
+def admin_update_menu_item(item_id):
     data = request.json
     fields = {
-        config.entity_name_field: data["name"],
-        "fee": data["fee"],
-        "office": data["office"],
-        "hours": data["hours"],
+        config.entity_name_field: data["dish_name"],
+        "price": data["price"],
+        "category": data["category"],
+        "spice_level": data["spice_level"],
     }
-    config.db_connector.update_entity(config, service_id, fields, data.get("documents", []))
+    config.db_connector.update_entity(config, item_id, fields, data.get("ingredients", []))
     engine.refresh()
-    return jsonify({"success": True, "message": "Service updated"})
+    return jsonify({"success": True, "message": "Menu item updated"})
 
 
-@app.route("/admin/services/<service_id>", methods=["DELETE"])
+@app.route("/admin/menu-items/<item_id>", methods=["DELETE"])
 @admin_required
-def admin_delete_service(service_id):
-    config.db_connector.delete_entity(config, service_id)
+def admin_delete_menu_item(item_id):
+    config.db_connector.delete_entity(config, item_id)
     engine.refresh()
-    return jsonify({"success": True, "message": "Service deleted"})
+    return jsonify({"success": True, "message": "Menu item deleted"})
 
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5002, host="0.0.0.0")
+    app.run(debug=True, port=5003, host="0.0.0.0")

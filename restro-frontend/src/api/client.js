@@ -1,7 +1,7 @@
 // IMPORTANT: use the SAME hostname style as your browser uses for the frontend.
 // If you open React at http://localhost:5173, this must say "localhost", not "127.0.0.1"
 // (browsers treat those as different origins for cookies, even on the same machine).
-const BASE_URL = "http://localhost:5002";
+const BASE_URL = "http://localhost:5003";
 // const BASE_URL = "http://192.168.1.6:5002";
 
 async function request(path, options = {}) {
