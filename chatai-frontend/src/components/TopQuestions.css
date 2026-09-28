@@ -1,0 +1,144 @@
+.top-questions-float {
+  position: fixed;
+  top: 6rem;
+  right: 1.5rem;
+  width: 320px;
+  max-height: calc(100vh - 8rem);
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border: 1px solid #e3e6f0;
+  border-radius: 14px;
+  box-shadow: 0 12px 32px -16px rgba(30, 47, 92, 0.35);
+  overflow: hidden;
+  z-index: 50;
+}
+
+.top-questions-float.closed {
+  width: auto;
+}
+
+.top-questions-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: #1e2f5c;
+}
+
+.top-questions-toggle {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #7a819a;
+}
+
+.top-questions-body {
+  padding: 0 1rem 1rem;
+  overflow-y: auto;
+}
+
+.top-questions-empty {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #7a819a;
+}
+
+.top-questions-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.top-questions-item {
+  padding: 0.7rem 0;
+  border-bottom: 1px solid #eef0f7;
+}
+
+.top-questions-item:first-child {
+  padding-top: 0.2rem;
+}
+
+.top-questions-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.top-questions-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.top-questions-rank {
+  flex-shrink: 0;
+  margin-top: 0.15rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #4b3ba8;
+}
+
+.top-questions-question {
+  flex: 1;
+  padding: 0;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  font-size: 0.88rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: #1e2f5c;
+}
+
+.top-questions-question:hover {
+  text-decoration: underline;
+}
+
+.top-questions-count {
+  flex-shrink: 0;
+  margin-top: 0.15rem;
+  font-size: 0.72rem;
+  color: #7a819a;
+}
+
+.top-questions-answer {
+  margin: 0.35rem 0 0 1.25rem;
+  padding-left: 0.6rem;
+  border-left: 2px solid #dcdff1;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: #454a63;
+  white-space: pre-wrap;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.top-questions-answer.expanded {
+  display: block;
+  overflow: visible;
+}
+
+.top-questions-more {
+  margin: 0.25rem 0 0 1.85rem;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.75rem;
+  color: #4b3ba8;
+}
+
+.top-questions-more:hover {
+  text-decoration: underline;
+}

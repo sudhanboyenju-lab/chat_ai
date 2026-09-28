@@ -4,9 +4,10 @@ from functools import wraps
 from flask import Flask, jsonify, request, session
 from flask_cors import CORS
 
+from ai_engine.analytics import ensure_log_table, get_top_questions, log_question
 from ai_engine.orchestrator import route_question
 from auth import register_user, verify_user
-from localgov_config import config, engine  # <-- only line that differs per project
+from localgov_config import config, engine
 
 app = Flask(__name__)
 CORS(app, supports_credentials=True, origins=["http://localhost:5173"])
@@ -18,6 +19,8 @@ app.config.update(
     SESSION_COOKIE_SECURE=False,
     SESSION_COOKIE_NAME="localgov_session",
 )
+
+ensure_log_table(config.db_connector)
 
 
 def login_required(f):
@@ -79,9 +82,22 @@ def logout():
     return jsonify({"success": True})
 
 
+@app.route("/me", methods=["GET"])
+def me():
+    """Lets the frontend ask 'am I still logged in?' after a page refresh."""
+    if "username" not in session:
+        return jsonify({"logged_in": False})
+    return jsonify({
+        "logged_in": True,
+        "username": session["username"],
+        "role": session.get("role"),
+    })
+
+
 def answer_one(question, history=None):
     route, entity_id = route_question(question, engine.entities, engine.entity_embeddings, engine.config)
     answer, sources, action = engine.ask(question, history=history)
+    log_question(config.db_connector, question, answer)
     return {
         "question": question,
         "answer": answer,
@@ -128,6 +144,13 @@ def ask_batch_endpoint():
             results.append(future.result())
 
     return jsonify({"results": results})
+
+
+@app.route("/top-questions", methods=["GET"])
+@login_required
+def top_questions_endpoint():
+    top = get_top_questions(config.db_connector, limit=5)
+    return jsonify({"top_questions": top})
 
 
 # --- Admin CRUD - via config.db_connector, not db.py's service-specific functions ---
