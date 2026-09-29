@@ -22,6 +22,12 @@ class BaseConnector(ABC):
     def delete_entity(self, config, entity_id):
         raise NotImplementedError
 
+    def get_dependencies(self, config):
+        """Optional: return {entity_id: [{"requires": other_entity_id, "note": str}, ...]}
+        for situation-based guidance. Default: no dependency data available -
+        subclasses only need to override this if config.dependency_table is used."""
+        return {}
+
 
 class MySQLConnector(BaseConnector):
     def __init__(self, get_connection_fn):
@@ -55,6 +61,29 @@ class MySQLConnector(BaseConnector):
         cursor.close()
         conn.close()
         return entities
+
+    def get_dependencies(self, config):
+        if not config.dependency_table:
+            return {}
+
+        conn = self.get_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute(
+            f"SELECT {config.dependency_from_field}, {config.dependency_requires_field}, "
+            f"{config.dependency_note_field} FROM {config.dependency_table}"
+        )
+        rows = cursor.fetchall()
+        cursor.close()
+        conn.close()
+
+        dependencies = {}
+        for row in rows:
+            entity_id = row[config.dependency_from_field]
+            dependencies.setdefault(entity_id, []).append({
+                "requires": row[config.dependency_requires_field],
+                "note": row.get(config.dependency_note_field),
+            })
+        return dependencies
 
     def add_entity(self, config, entity_id, fields: dict, documents: list[str]):
         conn = self.get_connection()

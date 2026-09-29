@@ -1,4 +1,4 @@
-from langchain_chroma import Chroma
+from langchain_community.vectorstores import Chroma
 from langchain_core.documents import Document
 
 
@@ -34,10 +34,15 @@ def setup_vectorstore(entities, config, persist_dir):
 def get_response_text(response):
     if isinstance(response.content, str):
         return response.content
-    return "".join(
-        block["text"] for block in response.content
-        if isinstance(block, dict) and block.get("type") == "text"
-    )
+    if isinstance(response.content, list):
+        parts = []
+        for block in response.content:
+            if isinstance(block, dict) and block.get("type") == "text":
+                parts.append(block["text"])
+            elif isinstance(block, str):
+                parts.append(block)
+        return "".join(parts)
+    return str(response.content) if response.content is not None else ""
 
 
 def rag_ask(vectorstore, question, config, history=None):
@@ -52,6 +57,7 @@ def rag_ask(vectorstore, question, config, history=None):
 
     docs = [doc for doc, _ in relevant]
     retrieved_text = "\n\n".join(doc.page_content for doc in docs)
+    sources = [doc.metadata.get("source", "unknown") for doc in docs]
 
     history_text = ""
     if history:
@@ -66,9 +72,20 @@ def rag_ask(vectorstore, question, config, history=None):
 
 Question: {question}
 """
-    response = config.llm.invoke(prompt)
-    sources = [doc.metadata.get("source", "unknown") for doc in docs]
-    return get_response_text(response), sources
+    # This is the LLM call that was previously unprotected: if it raises
+    # (API error, safety filter, quota, network) the whole /ask request used
+    # to 500. Now it degrades to the fallback message instead of crashing,
+    # and the print() gives you the real cause in your terminal to diagnose.
+    try:
+        response = config.llm.invoke(prompt)
+        answer = get_response_text(response)
+        if not answer.strip():
+            raise ValueError("LLM returned an empty response")
+        return answer, sources
+    except Exception as e:
+        print(f"[rag_ask] LLM call failed for question {question!r}: {type(e).__name__}: {e}")
+        msg = config.fallback_message_native if _looks_native(question, config) else config.fallback_message_en
+        return msg, sources
 
 
 def _looks_native(text, config):

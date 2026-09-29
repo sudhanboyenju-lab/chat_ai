@@ -41,6 +41,16 @@ config = EngineConfig(
     fallback_message_en="We don't have information about this service. Please contact your local ward office.",
     fallback_message_native="यो सेवाको बारेमा हामीसँग जानकारी छैन। कृपया आफ्नो स्थानीय वडा कार्यालयमा सम्पर्क गर्नुहोस्।",
     apply_intent_phrases=["i want to apply", "start my application", "apply for", "आवेदन दिन"],
+
+    # Situation-based guidance: lets a citizen describe a real-life situation
+    # ("my father passed away and I want to transfer his land") and get back
+    # an ordered set of steps, instead of only answering direct questions.
+    # The table is auto-created empty on first run - add rows via phpMyAdmin
+    # once you know your real service_id values.
+    dependency_table="service_dependencies",
+    dependency_from_field="service_id",
+    dependency_requires_field="requires_service_id",
+    dependency_note_field="note",
 )
 
 # One-time setup - runs once when the Flask process starts, same as your old

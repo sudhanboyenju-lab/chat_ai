@@ -6,9 +6,7 @@ lives here - everything domain-specific is passed in by the caller.
 
 from dataclasses import dataclass, field
 
-from ai_engine.connectors import (
-    BaseConnector,  # <-- real interface, not a bare Callable
-)
+from ai_engine.connectors import BaseConnector
 
 
 @dataclass
@@ -31,13 +29,21 @@ class EngineConfig:
     child_fk_field: str | None = None
     child_value_field: str | None = None
 
+    # --- Situation-based guidance (optional) ---
+    # Leave all four as None for projects that don't need multi-step guidance
+    # (Restro, Hospital). Only LocalGov sets these for now.
+    dependency_table: str | None = None
+    dependency_from_field: str | None = None       # e.g. "service_id"
+    dependency_requires_field: str | None = None   # e.g. "requires_service_id"
+    dependency_note_field: str | None = None       # e.g. "note"
+
     # --- Behaviour tuning ---
     similarity_threshold: float = 0.75
     rag_k: int = 3
     rag_score_threshold: float = 0.8
 
     # --- Pluggable pieces (dependency injection) ---
-    db_connector: BaseConnector = None      # type: ignore[assignment]  # was `Callable` - wrong type
+    db_connector: BaseConnector = None      # type: ignore[assignment]
     embeddings_model: object = None
     llm: object = None
     fallback_message_en: str = "We don't have information about this."
