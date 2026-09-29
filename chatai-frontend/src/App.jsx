@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import Login from "./components/Login";
 import Register from "./components/Register";
@@ -10,15 +10,36 @@ import { api } from "./api/client";
 import "./App.css";
 
 function AppContent() {
-    const { isLoggedIn, setIsLoggedIn, role } = useAuth();
+    const { isLoggedIn, setIsLoggedIn, role, setRole } = useAuth();
     const [authView, setAuthView] = useState("login");
     const [mode, setMode] = useState("single");
     const [view, setView] = useState("chat"); // "chat" | "admin"
+    const [checkingSession, setCheckingSession] = useState(true);
+
+    // On page load / refresh, ask the server if the session cookie is still valid
+    // and restore the login instead of dropping the user back on the login screen.
+    useEffect(() => {
+        api.me()
+            .then((res) => {
+                if (res && res.logged_in) {
+                    if (typeof setRole === "function") setRole(res.role);
+                    setIsLoggedIn(true);
+                }
+            })
+            .catch(() => {
+                // server unreachable -> just show the login screen
+            })
+            .finally(() => setCheckingSession(false));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     async function handleLogout() {
         await api.logout();
         setIsLoggedIn(false);
     }
+
+    // Don't flash the login form while we're still checking the session
+    if (checkingSession) return null;
 
     if (!isLoggedIn) {
         return (
