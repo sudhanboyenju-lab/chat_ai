@@ -30,16 +30,16 @@ def detect_services(question, entities, config):
     )
     prompt = f"""You are matching a citizen's message to a list of known government services.
 
-Known services:
-{entity_list}
+    Known services:
+    {entity_list}
 
-Message: "{question}"
+    Message: "{question}"
 
-Which of the services above are directly relevant to what the person needs to do?
-Reply with ONLY a JSON array of service ids from the list above, e.g. ["birth_registration"].
-If none of the services are clearly relevant, reply with [].
-Do not include any service id that isn't in the list above.
-"""
+    Which of the services above are directly relevant to what the person needs to do?
+    Reply with ONLY a JSON array of service ids from the list above, e.g. ["birth_registration"].
+    If none of the services are clearly relevant, reply with [].
+    Do not include any service id that isn't in the list above.
+    """
     # Guidance is a nice-to-have layered on top of a working system - any
     # failure here (API error, safety filter block, malformed response shape)
     # must fall back to plain RAG instead of crashing the whole request.
@@ -58,7 +58,7 @@ Do not include any service id that isn't in the list above.
             return []
 
         return [i for i in ids if isinstance(i, str) and i in entities]
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - intentional: any LLM failure here must fall back to RAG, not crash
         print(f"[detect_services] LLM call failed for question {question!r}: {type(e).__name__}: {e}")
         return []
 

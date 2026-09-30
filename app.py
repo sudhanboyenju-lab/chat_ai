@@ -5,6 +5,7 @@ from flask import Flask, jsonify, request, session
 from flask_cors import CORS
 
 from ai_engine.analytics import ensure_log_table, get_top_questions, log_question
+from ai_engine.cache import ensure_cache_table
 from ai_engine.guidance import ensure_dependency_table
 from ai_engine.orchestrator import route_question
 from auth import register_user, verify_user
@@ -22,7 +23,9 @@ app.config.update(
 )
 
 ensure_log_table(config.db_connector)
+ensure_cache_table(config.db_connector)
 ensure_dependency_table(config.db_connector, config)
+
 
 def login_required(f):
     @wraps(f)
@@ -31,6 +34,7 @@ def login_required(f):
             return jsonify({"error": "Not logged in"}), 401
         return f(*args, **kwargs)
     return decorated
+
 
 def admin_required(f):
     @wraps(f)
@@ -42,9 +46,11 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated
 
+
 @app.route("/")
 def home():
     return jsonify({"status": "API running"})
+
 
 @app.route("/register", methods=["POST"])
 def register():
@@ -57,6 +63,7 @@ def register():
 
     success, message = register_user(username, password)
     return jsonify({"success": success, "message": message})
+
 
 @app.route("/login", methods=["POST"])
 def login():
@@ -72,10 +79,12 @@ def login():
         return jsonify({"success": True, "role": role})
     return jsonify({"success": False, "message": "Invalid username or password"})
 
+
 @app.route("/logout", methods=["POST"])
 def logout():
     session.clear()
     return jsonify({"success": True})
+
 
 @app.route("/me", methods=["GET"])
 def me():
@@ -87,6 +96,7 @@ def me():
         "username": session["username"],
         "role": session.get("role"),
     })
+
 
 def answer_one(question, history=None):
     route, entity_id = route_question(question, engine.entities, engine.entity_embeddings, engine.config)
@@ -100,6 +110,7 @@ def answer_one(question, history=None):
         "route": route,
         "service_id": entity_id,
     }
+
 
 @app.route("/ask", methods=["POST"])
 @login_required
@@ -120,6 +131,7 @@ def ask_endpoint():
         "action": result["action"],
     })
 
+
 @app.route("/ask-batch", methods=["POST"])
 @login_required
 def ask_batch_endpoint():
@@ -137,11 +149,13 @@ def ask_batch_endpoint():
 
     return jsonify({"results": results})
 
+
 @app.route("/top-questions", methods=["GET"])
 @login_required
 def top_questions_endpoint():
     top = get_top_questions(config.db_connector, limit=5)
     return jsonify({"top_questions": top})
+
 
 # --- Admin CRUD - via config.db_connector, not db.py's service-specific functions ---
 @app.route("/admin/services", methods=["GET"])
@@ -149,6 +163,7 @@ def top_questions_endpoint():
 def admin_list_services():
     current_entities = config.db_connector.get_all_entities(config)
     return jsonify({"services": current_entities})
+
 
 @app.route("/admin/services", methods=["POST"])
 @admin_required
@@ -165,6 +180,7 @@ def admin_add_service():
     engine.refresh()
     return jsonify({"success": True, "message": "Service added"})
 
+
 @app.route("/admin/services/<service_id>", methods=["PUT"])
 @admin_required
 def admin_update_service(service_id):
@@ -178,6 +194,7 @@ def admin_update_service(service_id):
     config.db_connector.update_entity(config, service_id, fields, data.get("documents", []))
     engine.refresh()
     return jsonify({"success": True, "message": "Service updated"})
+
 
 @app.route("/admin/services/<service_id>", methods=["DELETE"])
 @admin_required

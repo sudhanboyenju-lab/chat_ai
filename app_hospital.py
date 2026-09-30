@@ -4,9 +4,11 @@ from functools import wraps
 from flask import Flask, jsonify, request, session
 from flask_cors import CORS
 
+from ai_engine.analytics import ensure_log_table, get_top_questions, log_question
+from ai_engine.cache import ensure_cache_table
 from ai_engine.orchestrator import route_question
 from auth import register_user, verify_user
-from hospital_config import config, engine  # <-- only line that differs per project
+from hospital_config import config, engine
 
 app = Flask(__name__)
 CORS(app, supports_credentials=True, origins=["http://localhost:5175"])
@@ -16,8 +18,11 @@ app.secret_key = "dev-secret-key-change-this-later"  # TODO: move to .env before
 app.config.update(
     SESSION_COOKIE_SAMESITE="Lax",
     SESSION_COOKIE_SECURE=False,
-    SESSION_COOKIE_NAME="hospital_session",  # keeps this app's login separate from LocalGov/Restro
+    SESSION_COOKIE_NAME="hospital_session",
 )
+
+ensure_log_table(config.db_connector)
+ensure_cache_table(config.db_connector)
 
 
 def login_required(f):
@@ -82,6 +87,7 @@ def logout():
 def answer_one(question, history=None):
     route, entity_id = route_question(question, engine.entities, engine.entity_embeddings, engine.config)
     answer, sources, action = engine.ask(question, history=history)
+    log_question(config.db_connector, question, answer)
     return {
         "question": question,
         "answer": answer,
@@ -128,6 +134,13 @@ def ask_batch_endpoint():
             results.append(future.result())
 
     return jsonify({"results": results})
+
+
+@app.route("/top-questions", methods=["GET"])
+@login_required
+def top_questions_endpoint():
+    top = get_top_questions(config.db_connector, limit=5)
+    return jsonify({"top_questions": top})
 
 
 # --- Admin CRUD for doctors ---

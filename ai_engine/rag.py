@@ -82,7 +82,7 @@ Question: {question}
         if not answer.strip():
             raise ValueError("LLM returned an empty response")
         return answer, sources
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - intentional: any LLM failure here must degrade to the fallback message, not crash
         print(f"[rag_ask] LLM call failed for question {question!r}: {type(e).__name__}: {e}")
         msg = config.fallback_message_native if _looks_native(question, config) else config.fallback_message_en
         return msg, sources
