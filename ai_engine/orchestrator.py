@@ -1,7 +1,7 @@
 import numpy as np
 
-from .cache import clear_cache, get_cached_answer, save_cached_answer
-from .guidance import build_guidance_answer, detect_services
+from .cache import get_cached_answer, save_cached_answer
+from .guidance import build_guidance_answer, detect_services, ensure_dependency_table
 from .rag import rag_ask, setup_vectorstore
 from .rule_engine import rule_engine_answer
 
@@ -44,6 +44,7 @@ class Engine:
 
     def __init__(self, config, persist_dir):
         self.config = config
+        ensure_dependency_table(config.db_connector, config)  # creates table if missing
         self.entities = config.db_connector.get_all_entities(config)
         self.dependencies = config.db_connector.get_dependencies(config)
         self.vectorstore = setup_vectorstore(self.entities, config, persist_dir)
@@ -54,14 +55,38 @@ class Engine:
         self.entities = self.config.db_connector.get_all_entities(self.config)
         self.dependencies = self.config.db_connector.get_dependencies(self.config)
         self.entity_embeddings = build_entity_embeddings(self.entities, self.config)
-        clear_cache(self.config.db_connector)  # data changed - old AI-generated answers may now be wrong
         # Note: vectorstore itself needs a rebuild (delete persist_dir) to reflect new docs -
-        # left as a manual step for now, same limitation as your original project.
+        # left as a manual step for now.
+
+    def _safe_save_cache(self, question, answer, sources, kind):
+        """Caching is an optimisation - a cache failure must never lose a good answer."""
+        try:
+            save_cached_answer(self.config.db_connector, question, answer, sources, kind)
+        except Exception as e:  # noqa: BLE001
+            print(f"[cache] Could not save {kind} answer: {type(e).__name__}: {e}")
 
     def ask(self, question, history=None):
         route, entity_id = route_question(question, self.entities, self.entity_embeddings, self.config)
 
         if route == "rule_engine":
+            # NEW: if the matched service has prerequisites, show the full ordered
+            # chain instead of just this one service. Pure DB data, no LLM call.
+            # "I want to apply" questions keep the normal path so the application
+            # flow still starts.
+            if (
+                self.config.dependency_table
+                and self.dependencies.get(entity_id)
+                and not wants_to_apply(question, self.config)
+            ):
+                try:
+                    answer = build_guidance_answer(
+                        [entity_id], self.entities, self.config, self.dependencies
+                    )
+                    if answer:
+                        return answer, [entity_id], None
+                except Exception as e:  # noqa: BLE001 - fall back to plain lookup
+                    print(f"[guidance] Rule-engine chain failed for {question!r}: {type(e).__name__}: {e}")
+
             # Instant DB lookup, no LLM call at all - never needs caching.
             answer, sources = rule_engine_answer(entity_id, self.entities, self.config)
             action = None
@@ -84,19 +109,18 @@ class Engine:
                 if service_ids:
                     answer = build_guidance_answer(service_ids, self.entities, self.config, self.dependencies)
                     if answer:
-                        save_cached_answer(self.config.db_connector, question, answer, service_ids, "guidance")
+                        self._safe_save_cache(question, answer, service_ids, "guidance")
                         return answer, service_ids, None
-            except Exception as e:  # noqa: BLE001 - intentional: guidance failing must never break /ask
+            except Exception as e:  # noqa: BLE001 - guidance failing must never break /ask
                 print(f"[guidance] Unexpected error for question {question!r}: {type(e).__name__}: {e}")
                 # fall through to RAG below
 
         answer, sources = rag_ask(self.vectorstore, question, self.config, history=history)
 
-        # rag_ask() itself degrades to a fallback message on failure (rate
-        # limit, API error, etc). Never cache that - it cost no quota to
-        # produce, and caching it would lock in the failure until expiry.
+        # rag_ask() degrades to a fallback message on failure (rate limit, API
+        # error, etc). Never cache that - it would lock in the failure.
         is_fallback = answer in (self.config.fallback_message_en, self.config.fallback_message_native)
         if not is_fallback:
-            save_cached_answer(self.config.db_connector, question, answer, sources, "rag")
+            self._safe_save_cache(question, answer, sources, "rag")
 
         return answer, sources, None
