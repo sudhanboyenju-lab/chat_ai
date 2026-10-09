@@ -1,0 +1,21 @@
+.env
+env/
+venv/
+__pycache__/
+<<<<<<< HEAD
+*.pyc
+chroma_db_json/
+chroma_localgov/
+chroma_restro/
+node_modules/
+.DS_Store
+chroma_localgov/
+chroma_restro/
+chroma_hospital/
+=======
+chroma_db_json/
+node_modules/
+*.pyc
+>>>>>>> 72c7092e8af3d8287fae0856580bc817c5fd287d
+.env
+env/
